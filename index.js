@@ -13,9 +13,24 @@ document.addEventListener('DOMContentLoaded', () => {
       let months = [];
       let variances = [];
 
-      const w = 900;
-      const h = 500;
-      const padding = 40;
+      const w = 1100;
+      const h = 650;
+      const padding = 60;
+      const monthNames = [
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December"
+      ];
+      const baseTemp = 8.66;
 
       dataSet.forEach((el, index) => {
         years[index] = el.year;
@@ -51,9 +66,15 @@ document.addEventListener('DOMContentLoaded', () => {
       
       const maxVarianceAbsValue = d3.max(variances) + Math.abs(d3.min(variances));
       const rectColors = [
-        "navy", "blue", "aqua", "lightblue", 
-        "yellow", "orange", "red", "darkred", 
-        "purple"];
+        "navy", 
+        "blue", 
+        "aqua", 
+        "lightblue", 
+        "yellow", 
+        "orange",
+        "crimson", 
+        "red", 
+        "darkred"];
       const colorUnitValue = maxVarianceAbsValue / rectColors.length; // used in logic for assigning color to a rect
       const varianceScale = d3.scaleLinear()
         .domain([d3.min(variances), d3.max(variances)])
@@ -64,6 +85,9 @@ document.addEventListener('DOMContentLoaded', () => {
         .enter()
         .append("rect")
         .attr("id", (d, i) => i)
+        .attr("data-month", (d) => (d.month - 1)) // the tests require the months to range from 0 to 11
+        .attr("data-year", (d) => d.year)
+        .attr("data-temp", (d) => d.variance)
         .attr("class", "cell")
         .attr("width", cellWidth)
         .attr("height", rectHeight) // 12 months
@@ -81,7 +105,82 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         });
       
+      const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
+      const yAxis = d3.axisLeft(yScale)
+        .tickFormat((d, i) => {
+          return monthNames[i];
+        });
+
+      // x axis
+      svg.append("g")
+        .attr("transform", "translate(0, " + (h - padding) + ")")
+        .attr("id", "x-axis")
+        .call(xAxis)
+        .attr("color", "black");
+
+      // y axis  
+      svg.append("g")
+        .attr("transform", "translate(" + padding + ", 0)")
+        .attr("id", "y-axis")
+        .call(yAxis)
+        .attr("color", "black");
       
+      // legend
+      svg.append("g")
+        .attr("id", "legend")
+        .selectAll("rect")
+        .data(rectColors)
+        .enter()
+        .append("rect")
+        .attr("width", 40)
+        .attr("height", 100)
+        .attr("x", (d, i) => (w / 2 + 180) - ((rectColors.length - i) * 40)) // for centering
+        .attr("y", -50)
+        .attr("fill", (d) => d);
+      
+
+      function showToolTip(event) {
+        const month = monthNames[event.target.getAttribute("data-month")];
+        const year = event.target.getAttribute("data-year");
+        const variance = event.target.getAttribute("data-temp");
+        const temperature = (baseTemp + parseFloat(variance)).toFixed(2);
+
+        tooltip.style.opacity = 1;
+
+        tooltip.innerHTML = 
+          `Month: ${month} <br/>
+          Year: ${year} <br/>
+          Temperature ${temperature} <br/>
+          Variance: ${variance}`;
+        
+        /* 
+        This attribute is just to satisfy the tests.
+        I prefer the method I use above to access the
+        information
+        */
+        d3.select("#tooltip")
+          .attr("data-year", event.target.getAttribute("data-year"));  
+      }
+
+      function hideToolTip() {
+        tooltip.innerText = "";
+        tooltip.style.opacity = 0;
+      }
+
+      function captureLocation(event) {
+        const x = event.clientX;
+        const y = event.clientY;
+        tooltip.style.left = `${x + 10}px`;
+        tooltip.style.top = `${y + 10}px`;
+      }
+
+      const tooltip = document.getElementById("tooltip");
+      const cells = document.getElementsByClassName("cell");
+      for (let i = 0; i < cells.length; i++) {
+        cells[i].addEventListener("mouseover", showToolTip);
+        cells[i].addEventListener("mouseout", hideToolTip);
+        cells[i].addEventListener("mousemove", captureLocation);
+      }
 
       
 
